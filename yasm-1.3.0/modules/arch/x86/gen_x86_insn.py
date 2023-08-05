@@ -80,21 +80,18 @@ def cpu_lcd(cpu1, cpu2):
     if cpumin != "Any":
         retval.add(cpumin)
 
-    # Feature
-    cpu1features = set(ordered_cpu_features) & set(cpu1)
-    if not cpu1features:
-        cpu1minfeature = -1
-    else:
+    if cpu1features := set(ordered_cpu_features) & set(cpu1):
         cpu1minfeature = min(ordered_cpu_features.index(x)
                              for x in cpu1features)
 
-    cpu2features = set(ordered_cpu_features) & set(cpu2)
-    if not cpu2features:
-        cpu2minfeature = -1
     else:
+        cpu1minfeature = -1
+    if cpu2features := set(ordered_cpu_features) & set(cpu2):
         cpu2minfeature = min(ordered_cpu_features.index(x)
                              for x in cpu2features)
 
+    else:
+        cpu2minfeature = -1
     if cpu1minfeature != -1 and cpu2minfeature != -1:
         featuremin = ordered_cpu_features[min(cpu1minfeature, cpu2minfeature)]
         retval.add(featuremin)
@@ -116,17 +113,23 @@ class Operand(object):
 
         if kwargs:
             for arg in kwargs:
-                lprint("Warning: unrecognized arg %s" % arg)
+                lprint(f"Warning: unrecognized arg {arg}")
 
     def __str__(self):
-        return "{"+ ", ".join(["OPT_%s" % self.type,
-                               "OPS_%s" % self.size,
-                               "%d" % self.relaxed,
-                               self.dest == "EA64" and "1" or "0",
-                               "OPTM_%s" % self.tmod,
-                               "OPA_%s" % (self.dest == "EA64"
-                                           and "EA" or self.dest),
-                               "OPAP_%s" % self.opt]) + "}"
+        return (
+            "{"
+            + ", ".join(
+                [
+                    f"OPT_{self.type}",
+                    f"OPS_{self.size}",
+                    "%d" % self.relaxed,
+                    self.dest == "EA64" and "1" or "0",
+                    f"OPTM_{self.tmod}",
+                    "OPA_%s" % (self.dest == "EA64" and "EA" or self.dest),
+                    f"OPAP_{self.opt}",
+                ]
+            )
+        ) + "}"
 
     def __eq__(self, other):
         return (self.type == other.type and

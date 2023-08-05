@@ -26,7 +26,7 @@ def FormatDiffHunks(hunks):
     r = []
     last_header = None
     for hunk in hunks:
-        this_header = hunk.header[0:2]
+        this_header = hunk.header[:2]
         if last_header != this_header:
             r.extend(hunk.header)
             last_header = this_header

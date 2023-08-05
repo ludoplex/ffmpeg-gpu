@@ -86,21 +86,17 @@ class WorkUnit(object):
         sys.stderr.write( "# parse %s\n" % str(self.files) )
         name = self.mkheader()
         # read macros
-        f = open(name+'.dM')
+        f = open(f'{name}.dM')
         macros = {}
-        for line in f.readlines():
+        for line in f:
             if line:
                 macro = line.split()[1]
                 if macro.count('('):
                     macro = macro[:macro.index('(')]
                 macros[macro] = None
-        #keys = macros.keys()
-        #keys.sort()
-        #for key in keys:
-            #print key
         self.macros = macros
         # parse preprocessed code
-        f = open(name+'.E')
+        f = open(f'{name}.E')
         s = f.read() + self.extradefs
         self.node = cparse.TransUnit(verbose = verbose)
         sys.stderr.write( "# parsing %s lines\n" % s.count('\n') )
@@ -123,7 +119,7 @@ class WorkUnit(object):
         name = self.filename
         assert name.endswith(".pyx")
 
-        pxi = name[:-3]+'pxi'
+        pxi = f'{name[:-3]}pxi'
         file = open( pxi, "w" )
         file.write(decls)
         sys.stderr.write( "# wrote %s, %d lines\n" % (pxi,decls.count('\n')) )
@@ -144,10 +140,7 @@ def file_exists(path):
     except OSError:
         return False
 
-if sys.platform.count('darwin'):
-    shared_ext = '.dylib'
-else:
-    shared_ext = '.so'
+shared_ext = '.dylib' if sys.platform.count('darwin') else '.so'
 
 def get_syms(libs, libdirs):
     # XX write interface to objdump -t XX

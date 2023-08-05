@@ -102,9 +102,8 @@ class Node(genpyx.Node, node_module.Node):
             if isinstance(x,Node):
                 x.cstr(l)
             else:
-                l.insert(0,str(x)+' ')
-        s = ''.join(l)
-        return s
+                l.insert(0, f'{str(x)} ')
+        return ''.join(l)
 
     def ctype(self): # anon_clone
         " return clone of self without identifiers "
@@ -137,7 +136,7 @@ class Node(genpyx.Node, node_module.Node):
             if not tank.has_key( type(node) ):
                 tank[ type(node) ] = {}
                 type(node).tank = tank[type(node)]
-            shape = tuple( [ type(_node).__name__ for _node in node ] )
+            shape = tuple(type(_node).__name__ for _node in node)
             if not tank[type(node)].has_key(shape):
                 tank[type(node)][shape] = []
             tank[type(node)][shape].append( node )
@@ -219,7 +218,7 @@ class Identifier(genpyx.Identifier, Named):
             l=[]
         if len(self)>1:
             assert len(self)==2
-            l.append( '%s = %s'%(self[0],self[1]) )
+            l.append(f'{self[0]} = {self[1]}')
         elif len(self)==1:
             l.append( str(self[0]) )
         return " ".join(l)
@@ -230,8 +229,7 @@ class TypeAlias(genpyx.TypeAlias, Named):
 
     """
     def cbasetype( self ):
-        node = self.typedef.cbasetype().get_rest()
-        return node
+        return self.typedef.cbasetype().get_rest()
 
 class Function(genpyx.Function, Node):
     """
@@ -250,11 +248,11 @@ class Function(genpyx.Function, Node):
         i=0
         while isinstance(self[i],Declarator):
             _l.append( self[i].cstr() )
-            i=i+1
-        l.append( '(%s)'% ', '.join(_l) )
+            i += 1
+        l.append(f"({', '.join(_l)})")
         while i<len(self):
             self[i].cstr(l)
-            i=i+1
+            i += 1
         return " ".join(l)
 
     def return_type(self):
@@ -264,20 +262,17 @@ class Function(genpyx.Function, Node):
     ret = property(return_type)
 
     def get_args(self):
-        args = [ arg for arg in self[:-1] if not arg.is_void() ]
-        return args
+        return [ arg for arg in self[:-1] if not arg.is_void() ]
     args = property(get_args)
 
     def arg_types(self):
         return [ AbstractDeclarator().init_from( arg.ctype() ) for arg in self[:-1]]
 
     def is_varargs(self):
-        for node in self.nodes():
-            if isinstance(node,Ellipses) or 'va_list' in node:
-#        print self, 'is_varargs'
-                return True
-#    print self, 'is_varargs'
-        return False
+        return any(
+            isinstance(node, Ellipses) or 'va_list' in node
+            for node in self.nodes()
+        )
 #    return fn.deepfind(Ellipses) or fn.deepfind('va_list')
 
     def ctype(self):
@@ -299,10 +294,7 @@ class Pointer(genpyx.Pointer, Node):
         assert len(self)
         node=self[0]
         l.insert(0,'*')
-        if isinstance(node,Function):
-            l.insert(0,'(')
-            l.append(')')
-        elif isinstance(node,Array):
+        if isinstance(node, (Function, Array)):
             l.insert(0,'(')
             l.append(')')
         return Node.cstr(self,l)
@@ -345,7 +337,7 @@ class Array(genpyx.Array, Node):
         if self.size is None:
             l.append('[]')
         else:
-            l.append('[%s]'%self.size)
+            l.append(f'[{self.size}]')
         return Node( *self[:-1] ).cstr( l )
 
 class Tag(genpyx.Tag, Named):
@@ -392,17 +384,15 @@ class Compound(genpyx.Compound, Taged):
 
     def cstr(self,_l=None):
         assert isinstance( self[0], Tag )
-        tag=''
-        if len(self[0]):
-            tag=' '+self[0][0]
+        tag = f' {self[0][0]}' if len(self[0]) else ''
         if isinstance(self,Struct):
-            l=[ 'struct%s '%tag ]
+            l = [f'struct{tag} ']
         elif isinstance(self,Union):
-            l=[ 'union%s '%tag ]
+            l = [f'union{tag} ']
         if len(self)>1:
             l.append(' { ')
             for decl in self[1:]:
-                l.append( decl.cstr()+"; " )
+                l.append(f"{decl.cstr()}; ")
             l.append('} ')
         if _l is None:
             _l=[]
@@ -434,14 +424,11 @@ class Enum(genpyx.Enum, Taged):
     """
     def cstr(self,_l=None):
         assert isinstance( self[0], Tag )
-        tag=''
-        if len(self[0]):
-            tag=' '+self[0][0]
-        l=[ 'enum%s '%tag ]
+        tag = f' {self[0][0]}' if len(self[0]) else ''
+        l = [f'enum{tag} ']
         if len(self)>1:
             l.append(' { ')
-            for node in self[1:]:
-                l.append( node.cstr()+', ' )
+            l.extend(f'{node.cstr()}, ' for node in self[1:])
             l.append('} ')
         if _l is None:
             _l=[]
@@ -542,14 +529,11 @@ class Declarator(genpyx.Declarator, Node):
     name = property(get_name, set_name)
 
     def get_rest(self): # XX needs a better name
-        if len(self)>1:
-            return self[1]
-        return self[0]
+        return self[1] if len(self)>1 else self[0]
 
     def pointer_to( self ):
         " return Declarator pointing to self's type "
-        decl = Declarator(Identifier(), Pointer(self.get_rest().clone()))
-        return decl
+        return Declarator(Identifier(), Pointer(self.get_rest().clone()))
 
     def deref( self ):
         " return (clone of) Declarator that self is pointing to "
@@ -566,11 +550,13 @@ class Declarator(genpyx.Declarator, Node):
         return self.pointer and self.deref().function
 
     def is_pointer_to_char(self):
-#    return self.ctype() == TransUnit("char *a;").transform()[0].ctype()
-        node = self.pointer or self.array
-        if node:
-            spec = node.spec 
-            if spec and BasicType('char') in spec and not BasicType('unsigned') in spec:
+        if node := self.pointer or self.array:
+            spec = node.spec
+            if (
+                spec
+                and BasicType('char') in spec
+                and BasicType('unsigned') not in spec
+            ):
                 return True
         return False
 
@@ -584,9 +570,11 @@ class Declarator(genpyx.Declarator, Node):
                     return True
 
     def is_complete( self, tag_lookup ):
-        if self.tagged and self.tagged.tag.name in tag_lookup and not tag_lookup[self.tagged.tag.name].has_members():
-            return False
-        return True
+        return bool(
+            not self.tagged
+            or self.tagged.tag.name not in tag_lookup
+            or tag_lookup[self.tagged.tag.name].has_members()
+        )
 
     def is_primative( self ):
         "i am a char,short,int,float,double... "
@@ -600,22 +588,7 @@ class Declarator(genpyx.Declarator, Node):
         self = self.cbasetype()
         if self.is_void():
             return False
-        if self.is_primative():
-            return True
-        if self.enum:
-            return True
-#    pointer = None
-#    if self.pointer:
-#      pointer = self.pointer
-#    elif self.array:
-#      pointer = self.array
-#    if pointer and pointer.spec:
-#      spec = pointer.spec
-#      if BasicType("char") in spec and not Qualifier("unsigned") in spec:
-#        # char*, const char*
-##        print self.deepstr()
-#        return True
-        return False
+        return True if self.is_primative() else bool(self.enum)
 
     def cstr(self,l=None):
         return Node.cstr(self,l).strip()
@@ -657,11 +630,11 @@ class Declarator(genpyx.Declarator, Node):
             parent = decl.get_parent(node)
             i = 0
             while i < len(parent):
-                assert not type(parent[i]) in (TypeAlias, Enum, Struct, Union)
+                assert type(parent[i]) not in (TypeAlias, Enum, Struct, Union)
                 if type(parent[i]) in (StorageClass, BasicType, Qualifier):
                     node.append( parent.pop(i) )
                 else:
-                    i = i + 1
+                    i += 1
 
         self.__cbasetype = decl.clone()
         return decl
@@ -677,11 +650,11 @@ class Declarator(genpyx.Declarator, Node):
         " return c string declaring name with same type as self "
         tp = self.ctype()
         tp.name = name
-        return tp.cstr()+";"
+        return f"{tp.cstr()};"
 
 class Typedef(genpyx.Typedef, Declarator):
     def cstr(self,l=None):
-        return 'typedef ' + Declarator.cstr(self,l) #.strip()
+        return f'typedef {Declarator.cstr(self, l)}'
 
 class AbstractDeclarator(genpyx.AbstractDeclarator, Declarator):
     """ used in Function; may lack an identifier """
@@ -700,7 +673,7 @@ class FieldLength(genpyx.FieldLength, Node):
         #return ""
 
     def cstr(self,l):
-        l.append(':%s'%self[0]) 
+        l.append(f':{self[0]}') 
 
 class StructDeclarator(genpyx.StructDeclarator, Declarator): # also used in Union
     """
@@ -778,10 +751,7 @@ class TypeSpecifiers(genpyx.TypeSpecifiers, DeclarationSpecifiers):
     enum = property(get_enum)
 
     def cbasetype(self):
-        node = Node.cbasetype(self)
-#    node.expose( TypeSpecifiers )
-#    if node.deepfind(TypeSpecifiers) != node:
-        return node
+        return Node.cbasetype(self)
 
 class Initializer(genpyx.Initializer, Node):
     """
@@ -854,8 +824,8 @@ class TransUnit(genpyx.TransUnit, Node):
 
 #    print self.deepstr()
     def __getstate__( self ):
-        nodes = tuple( [ repr(node) for node in self ] )
-        typedefs = tuple( [ (key,repr(val)) for key,val in self.typedefs.items() ] )
+        nodes = tuple(repr(node) for node in self)
+        typedefs = tuple((key, repr(val)) for key,val in self.typedefs.items())
         return nodes, typedefs
     def __setstate__( self, state ):
         Node.__init__(self)
@@ -884,7 +854,7 @@ class TransUnit(genpyx.TransUnit, Node):
         i=0
         while i<len(self):
             if self[i].file in files:
-                i=i+1
+                i += 1
             else:
                 self.pop(i)
 
@@ -1089,26 +1059,20 @@ class TransUnit(genpyx.TransUnit, Node):
         # accumulate nodes (they become the children of decl)
         children=[]
         while i:
-            i=i-1
+            i -= 1
             node=decl.pop(i)
             if isinstance(node,Declarator):
                 node = self.visit_declarator(node) # replace node
             else:
                 node = self.visit(node) # replace node
-            if isinstance(node,Pointer):
+            if isinstance(node, (Pointer, Function)):
                 node+=children
                 children=[node]
-            elif isinstance(node,Function):
-                node+=children
-                children=[node]
-            elif isinstance(node,Array):
+            elif isinstance(node, Array):
                 while children:
                     node.insert(0,children.pop())
                 children=[node]
                 # array size (if any) at end
-            #elif isinstance(node,Identifier):
-                #node+=children
-                #children=[node]
             else:
                 # accumulate
                 children.insert(0,node)

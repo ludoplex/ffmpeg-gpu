@@ -56,10 +56,7 @@ class DiffHunk(object):
         elif line[0] == " ":
             self.left.Append(line)
             self.right.Append(line)
-        elif line[0] == "\\":
-            # Ignore newline messages from git diff.
-            pass
-        else:
+        elif line[0] != "\\":
             assert False, ("Unrecognized character at start of diff line "
                            "%r" % line[0])
         self.lines.append(line)
@@ -85,34 +82,30 @@ def ParseDiffHunks(stream):
             break
 
         if hunk is None:
-            # Parse file names
-            diff_file = file_regex.match(line)
-            if diff_file:
-              if line.startswith("---"):
-                  a_line = line
-                  a = diff_file.group(2)
-                  continue
-              if line.startswith("+++"):
-                  b_line = line
-                  b = diff_file.group(2)
-                  continue
+            if diff_file := file_regex.match(line):
+                if line.startswith("---"):
+                    a_line = line
+                    a = diff_file[2]
+                    continue
+                if line.startswith("+++"):
+                    b_line = line
+                    b = diff_file[2]
+                    continue
 
-            # Parse offset/lengths
-            diffrange = range_regex.match(line)
-            if diffrange:
-                if diffrange.group(2):
-                    start_a = int(diffrange.group(1))
-                    len_a = int(diffrange.group(3))
+            if diffrange := range_regex.match(line):
+                if diffrange[2]:
+                    start_a = int(diffrange[1])
+                    len_a = int(diffrange[3])
                 else:
                     start_a = 1
-                    len_a = int(diffrange.group(1))
+                    len_a = int(diffrange[1])
 
-                if diffrange.group(5):
-                    start_b = int(diffrange.group(4))
-                    len_b = int(diffrange.group(6))
+                if diffrange[5]:
+                    start_b = int(diffrange[4])
+                    len_b = int(diffrange[6])
                 else:
                     start_b = 1
-                    len_b = int(diffrange.group(4))
+                    len_b = int(diffrange[4])
 
                 header = [a_line, b_line, line]
                 hunk = DiffHunk(header, a, b, start_a, len_a, start_b, len_b)

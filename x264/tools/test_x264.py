@@ -31,22 +31,27 @@ os.chdir(os.path.join(os.path.dirname(__file__), ".."))
 # options
 
 OPTIONS = [
-    [ "--tune %s" % t for t in ("film", "zerolatency") ],
+    [f"--tune {t}" for t in ("film", "zerolatency")],
     ("", "--intra-refresh"),
     ("", "--no-cabac"),
     ("", "--interlaced"),
     ("", "--slice-max-size 1000"),
     ("", "--frame-packing 5"),
-    [ "--preset %s" % p for p in ("ultrafast",
-                                  "superfast",
-                                  "veryfast",
-                                  "faster",
-                                  "fast",
-                                  "medium",
-                                  "slow",
-                                  "slower",
-                                  "veryslow",
-                                  "placebo") ]
+    [
+        f"--preset {p}"
+        for p in (
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+            "placebo",
+        )
+    ],
 ]
 
 # end options
@@ -57,10 +62,7 @@ def compare_yuv_output(width, height):
         size_b = os.path.getsize(file_b)
 
         if size_a != size_b:
-            raise ComparisonError("%s is not the same size as %s" % (
-                file_a,
-                file_b
-            ))
+            raise ComparisonError(f"{file_a} is not the same size as {file_b}")
 
         BUFFER_SIZE = 8196
 
@@ -119,7 +121,7 @@ def compare_yuv_output(width, height):
 
                                     macroblock = (ceil(pixel_x / 8.0), ceil(pixel_y / 8.0))
 
-                                macroblock = tuple([ int(x) for x in macroblock ])
+                                macroblock = tuple(int(x) for x in macroblock)
 
                                 raise ComparisonError("%s differs from %s at frame %d, " \
                                                       "macroblock %s on the %s plane (offset %d)" % (
@@ -297,18 +299,26 @@ class Regression(Case):
 
     def __init__(self):
         if self.fixture.dispatcher.x264:
-            self.__class__.__name__ += " %s" % " ".join(self.fixture.dispatcher.x264)
+            self.__class__.__name__ += f' {" ".join(self.fixture.dispatcher.x264)}'
 
     def test_psnr(self):
         try:
-            x264_proc = Popen([
-                "./x264",
-                "-o",
-                "%s.264" % self.fixture.dispatcher.video,
-                "--psnr"
-            ] + self.fixture.dispatcher.x264 + [
-                self.fixture.dispatcher.video
-            ], stdout=PIPE, stderr=STDOUT)
+            x264_proc = Popen(
+                (
+                    (
+                        [
+                            "./x264",
+                            "-o",
+                            f"{self.fixture.dispatcher.video}.264",
+                            "--psnr",
+                        ]
+                        + self.fixture.dispatcher.x264
+                    )
+                    + [self.fixture.dispatcher.video]
+                ),
+                stdout=PIPE,
+                stderr=STDOUT,
+            )
 
             output = x264_proc.communicate()[0]
 
@@ -321,19 +331,28 @@ class Regression(Case):
 
             raise FailedTestError("no PSNR output caught from x264")
         finally:
-            try: os.remove("%s.264" % self.fixture.dispatcher.video)
+            try:
+                os.remove(f"{self.fixture.dispatcher.video}.264")
             except: pass
 
     def test_ssim(self):
         try:
-            x264_proc = Popen([
-                "./x264",
-                "-o",
-                "%s.264" % self.fixture.dispatcher.video,
-                "--ssim"
-            ] + self.fixture.dispatcher.x264 + [
-                self.fixture.dispatcher.video
-            ], stdout=PIPE, stderr=STDOUT)
+            x264_proc = Popen(
+                (
+                    (
+                        [
+                            "./x264",
+                            "-o",
+                            f"{self.fixture.dispatcher.video}.264",
+                            "--ssim",
+                        ]
+                        + self.fixture.dispatcher.x264
+                    )
+                    + [self.fixture.dispatcher.video]
+                ),
+                stdout=PIPE,
+                stderr=STDOUT,
+            )
 
             output = x264_proc.communicate()[0]
 
@@ -346,15 +365,14 @@ class Regression(Case):
 
             raise FailedTestError("no PSNR output caught from x264")
         finally:
-            try: os.remove("%s.264" % self.fixture.dispatcher.video)
+            try:
+                os.remove(f"{self.fixture.dispatcher.video}.264")
             except: pass
 
 def _generate_random_commandline():
-    commandline = []
-
-    for suboptions in OPTIONS:
-        commandline.append(suboptions[randrange(0, len(suboptions))])
-
+    commandline = [
+        suboptions[randrange(0, len(suboptions))] for suboptions in OPTIONS
+    ]
     return filter(None, reduce(operator.add, [ shlex.split(opt) for opt in commandline ]))
 
 _generated = []
@@ -388,8 +406,10 @@ class Dispatcher(_Dispatcher):
             action="callback",
             dest="video",
             type=str,
-            callback=lambda option, opt, value, parser: setattr(self, "video", value),
-            help="yuv video to perform testing on (default: %s)" % self.video
+            callback=lambda option, opt, value, parser: setattr(
+                self, "video", value
+            ),
+            help=f"yuv video to perform testing on (default: {self.video})",
         )
 
         group.add_option(
@@ -429,13 +449,10 @@ class Dispatcher(_Dispatcher):
             action="callback",
             dest="yuv_tests",
             type=str,
-            callback=lambda option, opt, value, parser: setattr(self, "yuv_tests", [
-                val.strip() for val in value.split(",")
-            ]),
-            help="select tests to run with yuv comparisons (default: %s, available: %s)" % (
-                ", ".join(self.yuv_tests),
-                ", ".join(yuv_tests)
-            )
+            callback=lambda option, opt, value, parser: setattr(
+                self, "yuv_tests", [val.strip() for val in value.split(",")]
+            ),
+            help=f'select tests to run with yuv comparisons (default: {", ".join(self.yuv_tests)}, available: {", ".join(yuv_tests)})',
         )
 
         group.add_option(

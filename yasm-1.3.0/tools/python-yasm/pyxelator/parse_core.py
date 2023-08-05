@@ -19,7 +19,7 @@ class Symbols(object):
     self.tags = {} # struct, union, enum tags
 
   def __str__(self):
-    return "Symbols(%s,%s)"%(self.lookup,self.tags)
+    return f"Symbols({self.lookup},{self.tags})"
 
   def __getitem__(self,key):
     try:
@@ -46,9 +46,7 @@ class Symbols(object):
     try:
       item = self.tags[key]
     except KeyError:
-      item = None
-      if self.parent is not None:
-        item = self.parent.deep_get_tag(key)
+      item = self.parent.deep_get_tag(key) if self.parent is not None else None
     #if self.verbose: print "%s.get_tag(%s)=%s"%(self,key,item)
     return item
 
@@ -82,8 +80,8 @@ class Parser(object):
     raise ParseError(reason,*blah)
 
   def expected_error(self,lexer,*l):
-    self.parse_error( lexer, "expected %s, got '%s'"\
-      %(" or ".join(map(repr,l)),lexer.tok))
+    self.parse_error(
+        lexer, f"""expected {" or ".join(map(repr, l))}, got '{lexer.tok}'""")
 
   def consume(self,lexer,tok):
     if lexer.tok != tok:

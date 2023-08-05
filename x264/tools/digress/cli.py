@@ -57,9 +57,9 @@ class Dispatcher(object):
         self.commands = self._get_commands()
 
         self.optparse = OptionParser(
-            usage = "usage: %prog [options] command [args]",
-            description = "Digress CLI frontend for %s." % self.fixture.__class__.__name__,
-            version = "Digress %s" % version
+            usage="usage: %prog [options] command [args]",
+            description=f"Digress CLI frontend for {self.fixture.__class__.__name__}.",
+            version=f"Digress {version}",
         )
 
         self.optparse.print_help = MethodType(self._monkey_print_help, self.optparse, OptionParser)
@@ -87,13 +87,11 @@ class Dispatcher(object):
         self.fixture.cases = filter(lambda case: case.__name__ in cases, self.fixture.cases)
 
     def _get_commands(self):
-        commands = {}
-
-        for name, member in inspect.getmembers(self.fixture):
-            if hasattr(member, "digress_dispatchable"):
-                commands[name] = member
-
-        return commands
+        return {
+            name: member
+            for name, member in inspect.getmembers(self.fixture)
+            if hasattr(member, "digress_dispatchable")
+        }
 
     def _run_command(self, name, *args):
         if name not in self.commands:

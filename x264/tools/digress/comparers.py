@@ -9,7 +9,7 @@ from itertools import imap, izip
 
 def compare_direct(value_a, value_b):
     if value_a != value_b:
-        raise ComparisonError("%s is not %s" % (value_a, value_b))
+        raise ComparisonError(f"{value_a} is not {value_b}")
 
 def compare_pass(value_a, value_b):
     """
@@ -19,11 +19,8 @@ def compare_pass(value_a, value_b):
 def compare_tolerance(tolerance):
     def _compare_tolerance(value_a, value_b):
         if abs(value_a - value_b) > tolerance:
-            raise ComparisonError("%s is not %s (tolerance: %s)" % (
-                value_a,
-                value_b,
-                tolerance
-            ))
+            raise ComparisonError(f"{value_a} is not {value_b} (tolerance: {tolerance})")
+
     return _compare_tolerance
 
 def compare_files(file_a, file_b):

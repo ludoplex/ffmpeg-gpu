@@ -44,13 +44,12 @@ def get_file_sha(filename):
 # in sha
 def download_and_check_sha(url, filename, sha):
   path = os.path.join(local_resource_path, filename)
-  fp = open(path, "wb")
-  curl = pycurl.Curl()
-  curl.setopt(pycurl.URL, url + "/" + filename)
-  curl.setopt(pycurl.WRITEDATA, fp)
-  curl.perform()
-  curl.close()
-  fp.close()
+  with open(path, "wb") as fp:
+    curl = pycurl.Curl()
+    curl.setopt(pycurl.URL, f"{url}/{filename}")
+    curl.setopt(pycurl.WRITEDATA, fp)
+    curl.perform()
+    curl.close()
   return get_file_sha(path) == sha
 
 #constants

@@ -22,7 +22,7 @@ def checkout(revision):
 
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("checkout error: %s" % output)
+        raise SCMError(f"checkout error: {output}")
 
 def rev_parse(ref):
     proc = Popen([
@@ -33,7 +33,7 @@ def rev_parse(ref):
 
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("rev-parse error: %s" % output)
+        raise SCMError(f"rev-parse error: {output}")
     return output
 
 def current_rev():
@@ -54,7 +54,7 @@ def current_branch():
 
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("branch error: %s" % output)
+        raise SCMError(f"branch error: {output}")
     branch_name = GIT_BRANCH_EXPR.findall(output)[0]
     return branch_name != "(no branch)" and branch_name or None
 
@@ -62,15 +62,15 @@ def revisions(rev_a, rev_b):
     """
     Get a list of revisions from one to another.
     """
-    proc = Popen([
-        "git",
-        "log",
-        "--format=%H", ("%s...%s" % (rev_a, rev_b))
-    ], stdout=PIPE, stderr=STDOUT)
+    proc = Popen(
+        ["git", "log", "--format=%H", f"{rev_a}...{rev_b}"],
+        stdout=PIPE,
+        stderr=STDOUT,
+    )
 
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("log error: %s" % output)
+        raise SCMError(f"log error: {output}")
     return output.split("\n")
 
 def stash():
@@ -86,7 +86,7 @@ def stash():
 
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("stash error: %s" % output)
+        raise SCMError(f"stash error: {output}")
 
 def unstash():
     """
@@ -102,7 +102,7 @@ def bisect(*args):
     proc = Popen((["git", "bisect"] + list(args)), stdout=PIPE, stderr=STDOUT)
     output = proc.communicate()[0]
     if proc.returncode != 0:
-        raise SCMError("bisect error: %s" % output)
+        raise SCMError(f"bisect error: {output}")
     return output
 
 def dirty():
@@ -112,8 +112,5 @@ def dirty():
     proc = Popen(["git", "status"], stdout=PIPE, stderr=STDOUT)
     output = proc.communicate()[0].strip()
     if proc.returncode != 0:
-        raise SCMError("status error: %s" % output)
-    if "modified:" in output:
-        return True
-    else:
-        return False
+        raise SCMError(f"status error: {output}")
+    return "modified:" in output

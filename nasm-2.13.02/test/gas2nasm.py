@@ -32,14 +32,12 @@ def read(options):
         recs = []
         for line in f:
             if line[0] == '[':
-                d = []
                 strr = line[16:].partition('   ')
                 if strr[1] == '':
                     strr = line[16:].partition('\t')
                 l = strr[0].strip()
                 r = strr[2].strip()
-                d.append(l)
-                d.append(r)
+                d = [l, r]
                 recs.append(d)
     return recs
 
@@ -47,18 +45,15 @@ def commas(recs):
     replace_tbl = {' PTR':'', '\\':'', 'MM':'', 'XWORD':'OWORD'}
     reccommas = []
     for insn in recs:
-        new = []
         byte = '0x' + insn[0].replace(' ', ', 0x')
-        for rep in replace_tbl.keys():
+        for rep in replace_tbl:
             insn[1] = insn[1].replace(rep, replace_tbl[rep])
         mnemonic = insn[1]
 
-        # gas size specifier for gather and scatter insturctions seems wrong. just remove them.
-        if 'gather' in insn[1] or 'scatter' in insn[1]:
+        if 'gather' in mnemonic or 'scatter' in mnemonic:
             mnemonic = mnemonic.replace('ZWORD', '')
 
-        new.append(byte)
-        new.append(mnemonic)
+        new = [byte, mnemonic]
         reccommas.append(new)
     return reccommas
 
@@ -73,7 +68,7 @@ def write(data, options):
         with open(options.output, 'wb') as out:
             out.write(macro)
             if options.bits:
-                out.write('bits ' + options.bits + '\n\n')
+                out.write(f'bits {options.bits}' + '\n\n')
             for insn in data:
                 outstr = outstrfmt % tuple(insn)
                 out.write(outstr)

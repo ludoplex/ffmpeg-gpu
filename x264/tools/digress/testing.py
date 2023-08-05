@@ -81,11 +81,7 @@ class Fixture(object):
     def _skip_case(self, case, depend):
         for name, meth in inspect.getmembers(case):
             if name[:5] == "test_":
-                setattr(
-                    case,
-                    name,
-                    _skipped("failed dependency: case %s" % depend)(meth)
-                )
+                setattr(case, name, _skipped(f"failed dependency: case {depend}")(meth))
 
     def _run_case(self, case, results):
         if case.__name__ in results:
@@ -459,9 +455,9 @@ class Case(object):
     fixture = None
 
     def _get_test_by_name(self, test_name):
-        if not hasattr(self, "test_%s" % test_name):
+        if not hasattr(self, f"test_{test_name}"):
             raise NoSuchTestError(test_name)
-        return getattr(self, "test_%s" % test_name)
+        return getattr(self, f"test_{test_name}")
 
     def _run_test(self, test, results):
         test_name = test.__name__[5:]

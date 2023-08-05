@@ -34,9 +34,7 @@ import textwrap
 import sys
 
 def wrap(text):
-    if text:
-        return textwrap.fill(text, break_long_words=False) + '\n'
-    return ""
+    return textwrap.fill(text, break_long_words=False) + '\n' if text else ""
 
 
 def main(fileobj):

@@ -66,7 +66,7 @@ class Node(object):
         tree structure
     """
     _unique_id = 0
-    def get_unique_id(cls):
+    def get_unique_id(self):
         Node._unique_id += 1
         return Node._unique_id
     get_unique_id = classmethod(get_unique_id)
@@ -82,9 +82,8 @@ class Node(object):
             if isinstance(x,Node):
                 x.pyxstr(toks, indent, **kw)
             else:
-                toks.insert(0,str(x)+' ')
-        s = ''.join(toks)
-        return s
+                toks.insert(0, f'{str(x)} ')
+        return ''.join(toks)
 
 #
 #################################################
@@ -104,9 +103,8 @@ class Qualifier(object):
             toks = []
         x = self[0]
         if x not in ( 'const','volatile','inline','register'): # ignore these
-            toks.insert(0,str(x)+' ')
-        s = ''.join(toks)
-        return s
+            toks.insert(0, f'{str(x)} ')
+        return ''.join(toks)
 
 class StorageClass(object):
     "extern static auto"
@@ -142,7 +140,7 @@ class TypeAlias(object):
             if isinstance(x,Node):
                 x.pyxstr(toks, indent, cprefix=cprefix, **kw)
             else:
-                s = str(x)+' '
+                s = f'{str(x)} '
                 if cprefix:
                     s = cprefix+s
                 toks.insert(0,s)
@@ -160,11 +158,11 @@ class Function(object):
         while isinstance(self[i],Declarator):
             if not self[i].is_void():
                 _toks.append( self[i].pyxstr(indent=indent, **kw) )
-            i=i+1
-        toks.append( '(%s)'% ', '.join(_toks) )
+            i += 1
+        toks.append(f"({', '.join(_toks)})")
         while i<len(self):
             self[i].pyxstr(toks, indent=indent, **kw)
-            i=i+1
+            i += 1
         return " ".join(toks)
 
 class Pointer(object):
@@ -174,10 +172,7 @@ class Pointer(object):
         assert len(self)
         node=self[0]
         toks.insert(0,'*')
-        if isinstance(node,Function):
-            toks.insert(0,'(')
-            toks.append(')')
-        elif isinstance(node,Array):
+        if isinstance(node, (Function, Array)):
             toks.insert(0,'(')
             toks.append(')')
         return Node.pyxstr(self,toks,indent, **kw)
@@ -191,7 +186,7 @@ class Array(object):
         else:
             try:
                 int(self.size)
-                toks.append('[%s]'%self.size)
+                toks.append(f'[{self.size}]')
             except:
                 toks.append('[]')
         return Node( *self[:-1] ).pyxstr( toks,indent, **kw )
@@ -212,37 +207,40 @@ class Compound(Taged):
         names = kw.get('names',{})
         kw['names'] = names
         tag_lookup = kw.get('tag_lookup')
-        if self.tag:
-            tag=self.tag.name
-        else:
-            tag = ''
+        tag = self.tag.name if self.tag else ''
         if isinstance(self,Struct):
             descr = 'struct'
         elif isinstance(self,Union):
             descr = 'union'
         _node = names.get(self.tag.name,None)
         if ( _node is not None and _node.has_members() ) or \
-                ( _node is not None and not self.has_members() ):
+                    ( _node is not None and not self.has_members() ):
             descr = '' # i am not defining myself here
         #print "Compound.pyxstr", tag
         #print self.deepstr()
         if descr:
-            if cprefix and shadow_name:
-                tag = '%s%s "%s"'%(cprefix,tag,tag)
-            elif cprefix:
-                tag = cprefix+tag
-            toks = [ descr+' '+tag ] # struct foo
+            if cprefix:
+                tag = f'{cprefix}{tag} "{tag}"' if shadow_name else cprefix+tag
+            toks = [f'{descr} {tag}']
             if self.has_members():
                 toks.append(':\n')
-                for decl in self[1:]: # XX self.members
-                    toks.append( decl.pyxstr(indent=indent+1, cprefix=cprefix, shadow_name=shadow_name, **kw)+"\n" ) # shadow_name = False ?
-            #elif not tag_lookup.get( self.tag.name, self ).has_members():
-                # define empty struct here, it's the best we're gonna get
-                #pass
+                toks.extend(
+                    decl.pyxstr(
+                        indent=indent + 1,
+                        cprefix=cprefix,
+                        shadow_name=shadow_name,
+                        **kw
+                    )
+                    + "\n"
+                    for decl in self[1:]
+                )
+                #elif not tag_lookup.get( self.tag.name, self ).has_members():
+                    # define empty struct here, it's the best we're gonna get
+                    #pass
         else:
             if cprefix: # and shadow_name:
                 tag = cprefix+tag
-            toks = [ ' '+tag+' ' ] # foo
+            toks = [f' {tag} ']
         while toks:
             _toks.insert( 0, toks.pop() )
         return "".join( _toks )
@@ -266,25 +264,21 @@ class Enum(Taged):
             _toks=[]
         names = kw.get('names',{})
         kw['names'] = names
-        if self.tag:
-            tag=self.tag.name
-        else:
-            tag = ''
+        tag = self.tag.name if self.tag else ''
         _node = names.get(self.tag.name,None)
         if ( _node is not None and _node.has_members() ) or \
-                ( _node is not None and not self.has_members() ):
+                    ( _node is not None and not self.has_members() ):
             descr = '' # i am not defining myself here
         else:
             descr = 'enum'
         if descr:
         #if not names.has_key(self.tag.name):
-            toks = [ descr+' '+tag ] # enum foo
-            toks.append(':\n')
+            toks = [f'{descr} {tag}', ':\n']
             idents = [ ident for ident in self.members if ident.name not in names ]
             for ident in idents:
                 if cprefix and shadow_name:
                     ident = ident.clone()
-                    ident.name = '%s%s "%s"' % ( cprefix, ident.name, ident.name )
+                    ident.name = f'{cprefix}{ident.name} "{ident.name}"'
                 #else: assert 0
                 toks.append( '    '+'    '*indent + ident.pyxstr(**kw)+"\n" )
                 names[ ident.name ] = ident
@@ -293,7 +287,7 @@ class Enum(Taged):
                 #assert 0 # should be handled by parents...
                 toks.append( '    '+'    '*indent + "pass\n" )
         else:
-            toks = [ ' '+tag+' ' ] # foo
+            toks = [f' {tag} ']
         while toks:
             _toks.insert( 0, toks.pop() )
         return "".join( _toks )
@@ -306,22 +300,7 @@ class Declarator(object):
         self = self.cbasetype() # WARNING: cbasetype may be cached
         if self.is_void():
             return False
-        if self.is_primative():
-            return True
-        if self.enum:
-            return True
-        #pointer = None
-        #if self.pointer:
-            #pointer = self.pointer
-        #elif self.array:
-            #pointer = self.array
-        #if pointer and pointer.spec:
-            #spec = pointer.spec
-            #if BasicType("char") in spec and not Qualifier("unsigned") in spec:
-                # char*, const char*
-                ##print self.deepstr()
-                #return True
-        return False
+        return True if self.is_primative() else bool(self.enum)
 
     def _pyxstr( self, toks, indent, cprefix, use_cdef, shadow_name, **kw ):
         " this is the common part of pyxstr that gets called from both Declarator and Typedef "
@@ -331,7 +310,7 @@ class Declarator(object):
             if isinstance(node,Taged):
                 #print "Declarator.pyxstr", node.cstr()
                 if not node.tag.name:
-                    node.tag.name = "_anon_%s" % Node.get_unique_id()
+                    node.tag.name = f"_anon_{Node.get_unique_id()}"
                 _node = names.get(node.tag.name,None)
                 #tag_lookup = kw.get('tag_lookup')
                 #other = tag_lookup.get(node.tag.name, node)
@@ -369,14 +348,11 @@ class Declarator(object):
         if self.name and not names.has_key( self.name ):
             names[ self.name ] = self
         if self.identifier is not None:
-            comment = ""
-            if self.name in python_kws:
-                comment = "#"
+            comment = "#" if self.name in python_kws else ""
             if cprefix and use_cdef and shadow_name:
                 # When we are defining this guy, we refer to it using the pyrex shadow syntax.
-                self.name = '%s%s "%s" ' % ( cprefix, self.name, self.name )
-            cdef = 'cdef '
-            if not use_cdef: cdef = '' # sometimes we don't want the cdef (eg. in a cast)
+                self.name = f'{cprefix}{self.name} "{self.name}" '
+            cdef = '' if not use_cdef else 'cdef '
             # this may need shadow_name=False:
             toks.append( '    '*indent + comment + cdef + Node.pyxstr(self,indent=indent, cprefix=cprefix, **kw).strip() ) # + "(cprefix=%s)"%cprefix)
         #else: i am just a struct def (so i already did that) # huh ?? XX bad comment
@@ -384,7 +360,7 @@ class Declarator(object):
 
     def pyxsym(self, ostream, names=None, tag_lookup=None, cprefix="", modname=None, cobjects=None):
         assert self.name is not None, self.deepstr()
-        ostream.putln( '# ' + self.cstr() )
+        ostream.putln(f'# {self.cstr()}')
 # This cdef is no good: it does not expose a python object
 # and we can't reliably set a global var
         #ostream.putln( 'cdef %s %s' % ( self.pyx_adaptor_decl(cobjects), self.name ) ) # _CObject
@@ -392,7 +368,9 @@ class Declarator(object):
         #ostream.putln( '%s.p = <void*>&%s' % (self.name, cprefix+self.name) )
         ## expose a python object:
         #ostream.putln( '%s.%s = %s' % (modname,self.name, self.name) )
-        ostream.putln( '%s = %s( addr = <long>&%s )' % (self.name, self.pyx_adaptor_name(cobjects), cprefix+self.name) )
+        ostream.putln(
+            f'{self.name} = {self.pyx_adaptor_name(cobjects)}( addr = <long>&{cprefix + self.name} )'
+        )
         return ostream
 
 
@@ -405,10 +383,6 @@ class Typedef(Declarator):
         names = kw.get('names',{}) # what names have been defined ?
         kw['names']=names
 
-        #if self.tagged and not self.tagged.tag.name:
-            ## "typedef struct {...} foo;" => "typedef struct foo {...} foo;"
-            ## (to be emitted in the node loop below, and suppressed in the final toks.append)
-            #self.tagged.tag = Tag( self.name ) # this is how pyrex does it: tag.name == self.name
         # XX that doesn't work (the resulting c fails to compile) XX
 
         self._pyxstr( toks, indent, cprefix, use_cdef, shadow_name, **kw )
@@ -417,14 +391,10 @@ class Typedef(Declarator):
         if self.name and not names.has_key( self.name ):
             names[ self.name ] = self
         if not (self.tagged and self.name == self.tagged.tag.name):
-            comment = ""
-            if self.name in python_kws:
-                comment = "#"
-                #if cprefix:
-                #  self.name = '%s%s "%s" ' % ( cprefix, self.name, self.name ) # XX pyrex can't do this
+            comment = "#" if self.name in python_kws else ""
             if cprefix: # shadow_name=True
                 # My c-name gets this prefix. See also TypeAlias.pyxstr(): it also prepends the cprefix.
-                self.name = '%s%s "%s" ' % ( cprefix, self.name, self.name )
+                self.name = f'{cprefix}{self.name} "{self.name}" '
             toks.append( '    '*indent + comment + 'ctypedef ' + Node.pyxstr(self,indent=indent, cprefix=cprefix, **kw).strip() )
         return ' \n'.join(toks)
 
@@ -434,7 +404,7 @@ class AbstractDeclarator(Declarator):
     def pyxstr(self,toks=None,indent=0,**kw):
         if self.name in python_kws:
             # Would be better to do this in __init__, but our subclass doesn't call our __init__.
-            self.name = '_' + self.name
+            self.name = f'_{self.name}'
         #return '    '*indent + Node.pyxstr(self,toks,indent, **kw).strip()
         return Node.pyxstr(self,toks,indent, **kw).strip()
 
@@ -450,9 +420,7 @@ class StructDeclarator(Declarator): # also used in Union
     """
     """
     def pyxstr(self,toks=None,indent=0,**kw):
-        comment = ""
-        if self.name in python_kws:
-            comment = "#"
+        comment = "#" if self.name in python_kws else ""
         return '    '*indent + comment + Node.pyxstr(self,toks,indent, **kw).strip()
 
 class DeclarationSpecifiers(object):
@@ -492,7 +460,7 @@ class TransUnit(object):
     def pyx_decls(self, filenames, modname, macros = {}, names = {}, func_cb=None, cprefix="", **kw):
         # PART 1: emit extern declarations
         ostream = OStream()
-        now = datetime.today()
+        now = datetime.now()
         ostream.putln( now.strftime('# Code generated by pyxelator on %x at %X') + '\n' )
         ostream.putln("# PART 1: extern declarations")
         for filename in filenames:
@@ -501,7 +469,7 @@ class TransUnit(object):
         file = None # current file
         for node in self:
             ostream.putln('')
-            ostream.putln('    # ' + node.cstr() )
+            ostream.putln(f'    # {node.cstr()}')
             assert node.marked
             comment = False
             if node.name and node.name in names:
@@ -514,7 +482,7 @@ class TransUnit(object):
                 if node.file != file:
                     file = node.file
                     #ostream.putln( 'cdef extern from "%s":' % file )
-                    ostream.putln( '    # "%s"' % file )
+                    ostream.putln(f'    # "{file}"')
                 ostream.putln( s )
         ostream.putln('\n')
         #s = '\n'.join(toks)

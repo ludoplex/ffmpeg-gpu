@@ -52,13 +52,13 @@ class TSymbolAttr(TestCase):
         sym = self.symtab.declare("local3", 'local', 0)
         self.assertEquals(sym.visibility, set())
         sym = self.symtab.declare("global", 'global', 0)
-        self.assertEquals(sym.visibility, set(['global']))
+        self.assertEquals(sym.visibility, {'global'})
         sym = self.symtab.declare("common", 'common', 0)
-        self.assertEquals(sym.visibility, set(['common']))
+        self.assertEquals(sym.visibility, {'common'})
         sym = self.symtab.declare("extern", 'extern', 0)
-        self.assertEquals(sym.visibility, set(['extern']))
+        self.assertEquals(sym.visibility, {'extern'})
         sym = self.symtab.declare("dlocal", 'dlocal', 0)
-        self.assertEquals(sym.visibility, set(['dlocal']))
+        self.assertEquals(sym.visibility, {'dlocal'})
 
         self.assertRaises(ValueError,
                           lambda: self.symtab.declare("extern2", 'foo', 0))

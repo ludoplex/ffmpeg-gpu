@@ -26,10 +26,10 @@ class Lexer(object):
     self.verbose = verbose
     self.lookup = {} # a map for keywords and typedefs
     for t in \
-      "float double void char int".split():
+        "float double void char int".split():
       self.lookup[t] = host.BasicType( t )
     for t in \
-      "register signed unsigned short long const volatile inline".split(): # inline here ???
+        "register signed unsigned short long const volatile inline".split(): # inline here ???
       self.lookup[t] = host.Qualifier( t )
     for t in "extern static auto".split():
       self.lookup[t] = host.StorageClass( t )
@@ -39,7 +39,7 @@ class Lexer(object):
     self.lookup['...'] = host.Ellipses()
     if s:
       self.lex(s)
-    for key in kw.keys():
+    for key in kw:
       self.__dict__[key] = kw[key]
 
   def lex(self,s):
@@ -91,7 +91,7 @@ class Lexer(object):
 
   def get_brace_token( self ):
     self.push_state()
-    ident_chars0 = string.letters+"_"
+    ident_chars0 = f"{string.letters}_"
     ident_chars1 = string.letters+string.digits+"_"
     tok, kind = "", ""
     while self.lno < len(self.lines):
@@ -122,7 +122,7 @@ class Lexer(object):
 
   def get_token(self):
     self.push_state()
-    ident_chars0 = string.letters+"_"
+    ident_chars0 = f"{string.letters}_"
     ident_chars1 = string.letters+string.digits+"_"
     tok, kind = "", ""
     while self.lno < len(self.lines):
@@ -146,7 +146,7 @@ class Lexer(object):
           kind = self._get_kind(tok)
           break
         if s[i].isdigit() or \
-            (i+1<len(s) and s[i] in '+-.' and s[i+1].isdigit()):
+              (i+1<len(s) and s[i] in '+-.' and s[i+1].isdigit()):
           # number literal
           is_float = s[i]=='.'
           is_hex = s[i:i+2]=='0x'
@@ -190,7 +190,7 @@ class Lexer(object):
           while j<len(s) and s[j]!="'":
             j+=1
           if j==len(s):
-            raise LexError( self.err_string() + "unterminated char constant" )
+            raise LexError(f"{self.err_string()}unterminated char constant")
           tok = s[i:j+1]
           self.col = j+1
           kind = s[i:j+1]
@@ -199,7 +199,7 @@ class Lexer(object):
         #sys.stderr.write( "lexer ignoring '%s'\n"%s[i] )
         sys.stderr.write( "lexer ignoring '%s' lno=%d\n"%(s[i],self.lno+1) )
         i=i+1
-        # end while i < len(s)
+            # end while i < len(s)
       if i==len(s):
         # nothing found, go to next line
         assert tok == ""
@@ -210,7 +210,7 @@ class Lexer(object):
         # we got one
         assert tok
         break
-      # end while self.lno < len(self.lines):
+        # end while self.lno < len(self.lines):
     self.set_state(tok,kind,self.lno,self.col)
 
   def err_string(self):

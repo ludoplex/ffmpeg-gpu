@@ -87,10 +87,7 @@ class Identifier(Node):
   """
   """
   def __init__(self,name="",*items):
-    if name or 1:
-      Node.__init__(self,name,*items)
-    else:
-      Node.__init__(self)
+    Node.__init__(self,name,*items)
     self.name=name
 
 class Function(Node,Parser):
@@ -111,7 +108,7 @@ class Function(Node,Parser):
         node = ParameterDeclaration()
         node.parse(lexer,symbols)
         self.append( node )
-        if lexer.tok != ')' and lexer.tok != ',':
+        if lexer.tok not in [')', ',']:
           self.parse_error(lexer)
         if lexer.tok == ',':
           lexer.get_token()
@@ -142,7 +139,7 @@ class Array(Node,Parser):
       toks.append( lexer.tok )
       lexer.get_token()
     child = " ".join(toks)
-    if child == "":
+    if not child:
       child = None
     self.append( child )
     lexer.get_token() # read past the ']'
@@ -387,10 +384,7 @@ class DeclarationSpecifiers(Node,Parser):
     for i in range(len(self)):
       if not self[i] in other:
         return 0
-    for i in range(len(other)):
-      if not other[i] in self:
-        return 0
-    return 1
+    return next((0 for i in range(len(other)) if not other[i] in self), 1)
 
   def parse(self,lexer,symbols):
     self.parse_spec(lexer,symbols)
@@ -399,11 +393,9 @@ class DeclarationSpecifiers(Node,Parser):
   def parse_spec(self,lexer,symbols):
     typespec = None
     while lexer.tok:
-      if isinstance( lexer.kind, TypeAlias ) or\
-        isinstance( lexer.kind, BasicType ):
+      if isinstance(lexer.kind, (TypeAlias, BasicType)):
         if typespec is not None:
-          self.parse_error(lexer ,"type already specified as %s"\
-            %typespec )
+          self.parse_error(lexer, f"type already specified as {typespec}")
         typespec=lexer.kind
         self.append( lexer.kind )
         lexer.get_token()
@@ -532,11 +524,9 @@ class TypeSpecifiers(DeclarationSpecifiers):
   def parse_spec(self,lexer,symbols):
     typespec = None
     while lexer.tok:
-      if isinstance( lexer.kind, TypeAlias ) or\
-        isinstance( lexer.kind, BasicType ):
+      if isinstance(lexer.kind, (TypeAlias, BasicType)):
         if typespec is not None:
-          self.parse_error(lexer ,"type already specified as %s"\
-            %typespec )
+          self.parse_error(lexer, f"type already specified as {typespec}")
         typespec=lexer.kind
         self.append( lexer.kind )
         lexer.get_token()
@@ -544,7 +534,7 @@ class TypeSpecifiers(DeclarationSpecifiers):
         self.append( lexer.kind )
         lexer.get_token()
       elif isinstance( lexer.kind, StorageClass ):
-        self.parse_error(lexer ,"'%s' cannot appear here"%lexer.tok )
+        self.parse_error(lexer, f"'{lexer.tok}' cannot appear here")
       elif lexer.tok=='struct':
         lexer.get_token()
         self.parse_struct(lexer,symbols)
@@ -594,23 +584,21 @@ class Declaration(Node,Parser):
     if not lexer.tok: 
       return
     Parser.parse_enter(self,lexer)
-    declspec = DeclarationSpecifiers() 
+    declspec = DeclarationSpecifiers()
     declspec.parse(lexer,symbols)
     if len(declspec)==0:
       if lexer.tok == ';':
         lexer.get_token()
         # empty declaration...
         return
-      self.parse_error(lexer,
-        "expected specifiers, got '%s'"%lexer.tok )
+      self.parse_error(lexer, f"expected specifiers, got '{lexer.tok}'")
     self.append(declspec)
     while 1:
       decl = Declarator()
       decl.parse(lexer,symbols)
       if len(decl)==0:
         if declspec.needs_declarator():
-          self.parse_error(lexer,
-            "expected declarator, got '%s'"%lexer.tok )
+          self.parse_error(lexer, f"expected declarator, got '{lexer.tok}'")
       self.append(decl)
       ident = decl.ident
       if ident is not None:
@@ -627,14 +615,13 @@ class Declaration(Node,Parser):
           if _node != _self:
             self.parse_error(lexer,
               "\n%s\n  already defined as \n%s\n"%\
-              (self.deepstr(),node.deepstr()))
+                (self.deepstr(),node.deepstr()))
+        elif self.is_typedef():
+          #lexer.mktypedef( ident[0], self )
+          tp = TypeAlias(ident[0],decl) 
+          lexer.mktypedef( ident[0], tp )
         else:
-          if self.is_typedef():
-            #lexer.mktypedef( ident[0], self )
-            tp = TypeAlias(ident[0],decl) 
-            lexer.mktypedef( ident[0], tp )
-          else:
-            symbols[ident[0]] = self
+          symbols[ident[0]] = self
         if lexer.tok == '=':
           # parse initializer
           lexer.get_token()
@@ -683,8 +670,7 @@ class ParameterDeclaration(Declaration):
     if ident is not None and ident[0]:
       node = symbols[ident[0]]
       if node is not None:
-        self.parse_error(lexer,
-          "%s already defined as %s"%(ident,node))
+        self.parse_error(lexer, f"{ident} already defined as {node}")
       else:
         symbols[ident[0]] = self
 
@@ -695,7 +681,7 @@ class StructDeclaration(Declaration):
   def parse(self,lexer,symbols):
     if not lexer.tok: 
       return
-    declspec = DeclarationSpecifiers() 
+    declspec = DeclarationSpecifiers()
     declspec.parse(lexer,symbols)
     self.append(declspec)
     if len(declspec)==0:
@@ -703,26 +689,22 @@ class StructDeclaration(Declaration):
         lexer.get_token()
         # empty declaration...
         return
-      self.parse_error(lexer,
-        "expected specifiers, got '%s'"%lexer.tok )
+      self.parse_error(lexer, f"expected specifiers, got '{lexer.tok}'")
     while 1:
       decl = StructDeclarator()
       decl.parse(lexer,symbols)
       if len(decl)==0:
-        self.parse_error(lexer,
-          "expected declarator, got '%s'"%lexer.tok )
+        self.parse_error(lexer, f"expected declarator, got '{lexer.tok}'")
       self.append(decl)
       ident = decl.ident
       if ident is not None:
         node = symbols[ident[0]]
         if node is not None:
-          self.parse_error(lexer ,
-            "%s already defined as %s"%(ident,node))
+          self.parse_error(lexer, f"{ident} already defined as {node}")
+        elif declspec.is_typedef():
+          self.parse_error(lexer,"typedef in struct or union")
         else:
-          if declspec.is_typedef():
-            self.parse_error(lexer,"typedef in struct or union")
-          else:
-            symbols[ident[0]] = self
+          symbols[ident[0]] = self
       if lexer.tok == ';':
         break
       self.consume(lexer,',')
@@ -754,7 +736,7 @@ class TransUnit(Node,Parser):
     i=0
     while i<len(self):
       if self[i].file in files:
-        i=i+1
+        i += 1
       else:
         self.pop(i)
 
@@ -763,7 +745,7 @@ class TransUnit(Node,Parser):
     i=0
     while i<len(self):
       if cb(self[i].file):
-        i=i+1
+        i += 1
       else:
         self.pop(i)
 
@@ -796,16 +778,9 @@ def run0():
     s = sys.argv[1]
     #if sys.argv[2:]:
       #verbose = int(sys.argv[2])
-  if 0:
-    import profile
-    profile.run('TransUnit(s)','prof.out')
-    import pstats
-    p=pstats.Stats('prof.out')
-    p.strip_dirs().sort_stats(-1).print_stats()
-  else:
-    node = TransUnit(verbose = 1 )
-    node.parse(s)
-    node.act(1,1,1)
+  node = TransUnit(verbose = 1 )
+  node.parse(s)
+  node.act(1,1,1)
 
 def run1():
   cstr = "char *(*)() ,"
@@ -813,7 +788,5 @@ def run1():
   node.parse( Lexer(cstr,True), Symbols() )
   print node.deepstr()
 
-if __name__=="__main__":
-  pass
 
 

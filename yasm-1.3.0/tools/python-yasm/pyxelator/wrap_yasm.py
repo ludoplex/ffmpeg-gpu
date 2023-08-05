@@ -19,8 +19,8 @@ import ir
 
 def mk_tao(CPPFLAGS = "", CPP = "gcc -E", modname = '_yasm', oname = None, YASM_DIR = ".", **options):
     if oname is None:
-        oname = modname+'.pyx'
-    CPPFLAGS += " -I"+YASM_DIR
+        oname = f'{modname}.pyx'
+    CPPFLAGS += f" -I{YASM_DIR}"
     CPPFLAGS += " -DYASM_PYXELATOR"
     CPPFLAGS += " -DYASM_LIB_INTERNAL"
     CPPFLAGS += " -DYASM_BC_INTERNAL"
@@ -31,7 +31,7 @@ def mk_tao(CPPFLAGS = "", CPP = "gcc -E", modname = '_yasm', oname = None, YASM_
     def cb(trans_unit, node, *args):
         name, file = node.name, node.file
         return True
-        return name in syms
+
     extradefs = ""
     unit = WorkUnit(files,modname,oname,False,mark_cb=cb,extradefs=extradefs,
         CPPFLAGS=CPPFLAGS, CPP=CPP, **options)
@@ -43,7 +43,7 @@ def mk_tao(CPPFLAGS = "", CPP = "gcc -E", modname = '_yasm', oname = None, YASM_
 
 def main():
     options = {}
-    for i,arg in enumerate(sys.argv[1:]):
+    for arg in sys.argv[1:]:
         if arg.count('='):
             key,val = arg.split('=', 1)
             options[key]=val

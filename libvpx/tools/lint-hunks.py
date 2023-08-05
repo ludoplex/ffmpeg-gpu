@@ -33,7 +33,7 @@ class Usage(Exception):
 
 class SubprocessException(Exception):
     def __init__(self, args):
-        msg = "Failed to execute '%s'"%(" ".join(args))
+        msg = f"""Failed to execute '{" ".join(args)}'"""
         super(SubprocessException, self).__init__(msg)
 
 

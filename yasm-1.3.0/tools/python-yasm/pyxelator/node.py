@@ -19,7 +19,7 @@ class Node(list):
         self.lock1 = 0 # these two should be properties (simplifies serializing)
         self.lock2 = 0
         self.verbose = 0
-        for key in kw.keys():
+        for key in kw:
             self.__dict__[key] = kw[key]
 
     def __str__(self):
@@ -30,7 +30,7 @@ class Node(list):
             else:
                 attrs.append( repr(item) )
         attrs = ','.join(attrs)
-        return "%s(%s)"%(self.__class__.__name__,attrs)
+        return f"{self.__class__.__name__}({attrs})"
 
     def safe_repr( self, tank ):
         tank[ str(self) ] = None
@@ -44,11 +44,11 @@ class Node(list):
         for key, val in self.__dict__.items():
             if isinstance(val,Node):
                 if str(val) not in tank:
-                    attrs.append( '%s=%s'%(key,val.safe_repr(tank)) )
+                    attrs.append(f'{key}={val.safe_repr(tank)}')
             else:
-                attrs.append( '%s=%s'%(key,repr(val)) )
+                attrs.append(f'{key}={repr(val)}')
         attrs = ','.join(attrs)
-        return "%s(%s)"%(self.__class__.__name__,attrs)
+        return f"{self.__class__.__name__}({attrs})"
 
     def __repr__(self):
         #attrs = ','.join( [repr(item) for item in self] + \
@@ -61,10 +61,7 @@ class Node(list):
             return 0
         if len(self)!=len(other):
             return 0
-        for i in range(len(self)):
-            if not self[i]==other[i]:
-                return 0
-        return 1
+        return next((0 for i in range(len(self)) if not self[i]==other[i]), 1)
 
     def __ne__(self,other):
         return not self==other
@@ -78,10 +75,7 @@ class Node(list):
         return [x for x in self.nodes() if isinstance(x,cls)]
 
     def find(self,cls):
-        for x in self:
-            if isinstance(x,cls):
-                return x
-        return None
+        return next((x for x in self if isinstance(x,cls)), None)
 
     def deepfind(self,cls):
         " bottom-up isinstance search "
@@ -92,15 +86,12 @@ class Node(list):
                 node = x.deepfind(cls)
                 if node is not None:
                     return node
-        if isinstance(self,cls):
-            return self
-        return None
+        return self if isinstance(self,cls) else None
 
     def leaves(self):
         for i in self:
             if isinstance( i, Node ):
-                for j in i.leaves():
-                    yield j
+                yield from i.leaves()
             else:
                 yield i
 
@@ -108,8 +99,7 @@ class Node(list):
         " bottom-up iteration "
         for i in self:
             if isinstance( i, Node ):
-                for j in i.nodes():
-                    yield j
+                yield from i.nodes()
         yield self
 
     def deeplen(self):
@@ -128,8 +118,6 @@ class Node(list):
     def deepstr(self,level=0,comment=False,nl='\n',indent='    '):
         if self.deeplen() < 4:
             nl = ""; indent = ""
-        #else:
-            #nl="\n"; indent = "    "
         s = []
         if not self.lock1:
             self.lock1=1
@@ -144,8 +132,8 @@ class Node(list):
                 if isinstance(item,Node):
                     s.append( indent*(level+1)+"<recursion...>" )
                 else:
-                    s.append( indent*(level+1)+"%s"%repr(item) )
-        s = "%s(%s)"%(self.__class__.__name__,nl+string.join(s,","+nl))
+                    s.append(indent*(level+1) + f"{repr(item)}")
+        s = f'{self.__class__.__name__}({nl + string.join(s, f",{nl}")})'
         if comment:
             s = '#' + s.replace('\n','\n#')
         return s
@@ -255,7 +243,7 @@ class Node(list):
             if isinstance(self[i],cls):
                 self.pop(i)
             else:
-                i=i+1
+                i += 1
 
     def deeprm(self,item):
         ' remove any items matching <item> '
@@ -268,7 +256,7 @@ class Node(list):
             if self[i] == item:
                 self.pop(i)
             else:
-                i=i+1
+                i += 1
 
     def idem(self,cls):
         " <cls> is made idempotent "

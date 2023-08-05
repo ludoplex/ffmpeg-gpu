@@ -103,7 +103,7 @@ def read_frame_dpl_stats(fp):
   mv_ls = []
   mv_rows = int((math.ceil(mi_rows * 1. / mi_size)))
   mv_cols = int((math.ceil(mi_cols * 1. / mi_size)))
-  for i in range(mv_rows * mv_cols):
+  for _ in range(mv_rows * mv_cols):
     line = fp.readline()
     word_ls = line.split()
     row = int(word_ls[0]) * 8.
@@ -114,11 +114,9 @@ def read_frame_dpl_stats(fp):
   mv_ls = np.array(mv_ls)
   img = yuv_to_rgb(read_frame(fp))
   feature_score = read_feature_score(fp, mv_rows, mv_cols)
-  ref = None
   line = fp.readline()
   word_ls = line.split()
-  if int(word_ls[1]):
-    ref = yuv_to_rgb(read_frame(fp))
+  ref = yuv_to_rgb(read_frame(fp)) if int(word_ls[1]) else None
   return frame_idx, mv_ls, img, ref, bs, feature_score
 
 
